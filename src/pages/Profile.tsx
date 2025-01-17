@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Calendar, Clock, MapPin, Loader } from 'lucide-react';
 
 export default function Profile() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     birth_date: '',
@@ -74,7 +76,7 @@ export default function Profile() {
         .eq('user_id', user.id);
 
       if (error) throw error;
-      alert('Profile updated successfully!');
+      navigate('/dashboard');
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('Error updating profile');
@@ -84,13 +86,13 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-center mb-8">Your Profile</h1>
+    <div className="min-h-screen bg-halloween-background py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md mx-auto bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-8 border border-halloween-border">
+        <h1 className="text-2xl font-bold text-center mb-8 text-halloween-text-primary">Your Profile</h1>
         
         <form onSubmit={updateProfile} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-halloween-text-primary">
               Date of Birth
             </label>
             <div className="mt-1 relative">
@@ -98,14 +100,14 @@ export default function Profile() {
                 type="date"
                 value={profile.birth_date}
                 onChange={(e) => setProfile({ ...profile, birth_date: e.target.value })}
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                className="appearance-none block w-full px-3 py-2 bg-halloween-background border border-halloween-border rounded-md shadow-sm text-halloween-text-primary placeholder-halloween-text-secondary focus:outline-none focus:ring-2 focus:ring-halloween-accent focus:border-transparent"
               />
-              <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+              <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-halloween-text-secondary" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-halloween-text-primary">
               Time of Birth
             </label>
             <div className="mt-1 relative">
@@ -113,14 +115,14 @@ export default function Profile() {
                 type="time"
                 value={profile.birth_time}
                 onChange={(e) => setProfile({ ...profile, birth_time: e.target.value })}
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                className="appearance-none block w-full px-3 py-2 bg-halloween-background border border-halloween-border rounded-md shadow-sm text-halloween-text-primary placeholder-halloween-text-secondary focus:outline-none focus:ring-2 focus:ring-halloween-accent focus:border-transparent"
               />
-              <Clock className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+              <Clock className="absolute right-3 top-2.5 h-5 w-5 text-halloween-text-secondary" />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-halloween-text-primary">
               Place of Birth
             </label>
             <div className="mt-1 relative">
@@ -129,19 +131,29 @@ export default function Profile() {
                 value={profile.birth_place}
                 onChange={(e) => setProfile({ ...profile, birth_place: e.target.value })}
                 placeholder="City, Country"
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                className="appearance-none block w-full px-3 py-2 bg-halloween-background border border-halloween-border rounded-md shadow-sm text-halloween-text-primary placeholder-halloween-text-secondary focus:outline-none focus:ring-2 focus:ring-halloween-accent focus:border-transparent"
               />
-              <MapPin className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+              <MapPin className="absolute right-3 top-2.5 h-5 w-5 text-halloween-text-secondary" />
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-          >
-            {loading ? <Loader className="animate-spin h-5 w-5" /> : 'Save Profile'}
-          </button>
+          <div className="flex gap-4">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-halloween-accent hover:bg-halloween-accent/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-halloween-accent transition-colors duration-200"
+            >
+              {loading ? <Loader className="animate-spin h-5 w-5" /> : 'Save Profile'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="flex-1 py-2 px-4 border border-halloween-border rounded-md shadow-sm text-sm font-medium text-halloween-text-primary bg-halloween-card hover:bg-halloween-card/80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-halloween-border transition-colors duration-200"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollText } from 'lucide-react';
-import { getTarotReading } from '../services/fortuneService';
+import { getTarotReading } from '../services/tarotService';
 
 export default function TarotWidget() {
   const [reading, setReading] = useState<any>(null);
@@ -22,7 +22,7 @@ export default function TarotWidget() {
     }
   };
 
-  if (loading) return <div>Drawing cards...</div>;
+  if (loading) return <div className="text-halloween-text-primary">Drawing cards...</div>;
   if (!reading) return null;
 
   return (
@@ -38,19 +38,19 @@ export default function TarotWidget() {
                   card.reversed ? 'rotate-180' : ''
                 }`}
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50 rounded-lg" />
-              <div className="absolute bottom-2 left-2 right-2 text-white text-xs">
-                <h4 className="font-medium">{card.name}</h4>
-                <p className="capitalize opacity-75">{card.position}</p>
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-halloween-background/90 rounded-lg" />
+              <div className="absolute bottom-2 left-2 right-2">
+                <h4 className="font-medium text-halloween-text-primary text-xs">{card.name}</h4>
+                <p className="capitalize text-halloween-text-secondary text-xs opacity-75">{card.position}</p>
               </div>
             </div>
           </div>
         ))}
       </div>
-      <p className="text-sm text-gray-600 mb-4">{reading.interpretation}</p>
+      <p className="text-sm text-halloween-text-secondary mb-4">{reading.interpretation}</p>
       <button
         onClick={drawCards}
-        className="w-full py-2 px-4 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200"
+        className="w-full py-2 px-4 bg-halloween-accent hover:bg-halloween-accent/90 text-white rounded-lg transition-colors duration-200 shadow-lg shadow-halloween-accent/20"
       >
         Draw New Reading
       </button>
