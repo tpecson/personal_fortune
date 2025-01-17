@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
-import { Moon, Compass, BookOpen, ScrollText, User, Hash, Diamond, Cloud, Calendar, Clock, MapPin, LogOut, Sun } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import ReactGridLayout from 'react-grid-layout';
+import { 
+  Moon, Compass, BookOpen, ScrollText, User, Hash, Diamond, Cloud, 
+  Calendar, Clock, MapPin, Star, Sparkles 
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getHerbs } from '../services/herbService';
+import { getSunSign, getMoonSign, getAscendant } from '../services/astroService';
 import { getChineseZodiac } from '../services/chineseZodiacService';
-import { getSunSign } from '../services/astroService';
 import MoonPhaseWidget from '../components/MoonPhaseWidget';
 import BiorhythmWidget from '../components/BiorhythmWidget';
 import AstroWidget from '../components/AstroWidget';
@@ -17,8 +20,6 @@ import AstroWeatherWidget from '../components/AstroWeatherWidget';
 import OccultNewsFooter from '../components/OccultNewsFooter';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const defaultLayout = [
   { i: 'astroweather', x: 0, y: 0, w: 6, h: 4.4 },
@@ -32,15 +33,27 @@ const defaultLayout = [
 ];
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const [currentLayout, setCurrentLayout] = useState(defaultLayout);
   const [profile, setProfile] = useState<any>(null);
   const [email, setEmail] = useState<string>('');
   const [herbs, setHerbs] = useState<any[]>([]);
   const [currentHerbIndex, setCurrentHerbIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [zodiacInfo, setZodiacInfo] = useState<any>(null);
-  const [sunSign, setSunSign] = useState<string | null>(null);
+  const [zodiacInfo, setZodiacInfo] = useState<{
+    sunSign: string | null;
+    moonSign: string | null;
+    ascendant: string | null;
+    chineseZodiac: {
+      animal: string;
+      element: string;
+      yearStatus: string;
+    } | null;
+  }>({
+    sunSign: null,
+    moonSign: null,
+    ascendant: null,
+    chineseZodiac: null
+  });
 
   useEffect(() => {
     loadProfile();
@@ -50,11 +63,28 @@ export default function Dashboard() {
   useEffect(() => {
     if (profile?.birth_date) {
       const birthDate = new Date(profile.birth_date);
-      const birthYear = birthDate.getFullYear();
-      setZodiacInfo(getChineseZodiac(birthYear));
-      setSunSign(getSunSign(birthDate));
+      const sunSign = getSunSign(birthDate);
+      const moonSign = getMoonSign(birthDate);
+      const ascendant = getAscendant(profile.birth_time, profile.birth_date);
+      const chineseZodiac = getChineseZodiac(birthDate.getFullYear());
+
+      setZodiacInfo({
+        sunSign,
+        moonSign,
+        ascendant,
+        chineseZodiac
+      });
     }
-  }, [profile?.birth_date]);
+  }, [profile]);
+
+  useEffect(() => {
+    if (herbs.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentHerbIndex((prev) => (prev + 1) % herbs.length);
+      }, 10000); // Change herb every 10 seconds
+      return () => clearInterval(interval);
+    }
+  }, [herbs]);
 
   async function loadProfile() {
     try {
@@ -75,8 +105,6 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Error loading profile:', error);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -86,35 +114,10 @@ export default function Dashboard() {
       setHerbs(herbsData);
     } catch (error) {
       console.error('Error loading herbs:', error);
+    } finally {
+      setLoading(false);
     }
   }
-
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      navigate('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'Not set';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (timeString: string) => {
-    if (!timeString) return 'Not set';
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true
-    });
-  };
 
   const renderHerbAssociations = (herb: any) => {
     if (!herb?.associations) return null;
@@ -151,6 +154,96 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+        
+        {herb.illustration && (
+          <div className="mt-4">
+            <img
+              src={herb.illustration}
+              alt={`${herb.name} illustration`}
+              className="w-full h-48 object-cover rounded-lg"
+            />
+          </div>
+        )}
+        
+        <div className="mt-4">
+          <p className="text-sm text-halloween-text-secondary italic">
+            {herb.additionalInfo}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  const renderZodiacInfo = () => {
+    if (!profile?.birth_date) return null;
+
+    return (
+      <div className="mt-6 space-y-4 pt-4 border-t border-halloween-border">
+        <div>
+          <h4 className="text-sm font-medium text-halloween-text-primary mb-3 flex items-center gap-2">
+            <Star className="h-4 w-4 text-halloween-accent" />
+            Astrological Signs
+          </h4>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-halloween-text-secondary">Sun Sign</span>
+              <span className="text-sm text-halloween-text-primary font-medium">
+                {zodiacInfo.sunSign || '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-halloween-text-secondary">Moon Sign</span>
+              <span className="text-sm text-halloween-text-primary font-medium">
+                {zodiacInfo.moonSign || '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-halloween-text-secondary">Ascendant</span>
+              <span className="text-sm text-halloween-text-primary font-medium">
+                {zodiacInfo.ascendant || '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 className="text-sm font-medium text-halloween-text-primary mb-3 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-halloween-accent" />
+            Chinese Zodiac
+          </h4>
+          {zodiacInfo.chineseZodiac ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-halloween-text-secondary">Animal</span>
+                <span className="text-sm text-halloween-text-primary font-medium">
+                  {zodiacInfo.chineseZodiac.animal}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-halloween-text-secondary">Element</span>
+                <span className="text-sm text-halloween-text-primary font-medium">
+                  {zodiacInfo.chineseZodiac.element}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-halloween-text-secondary">Year Status</span>
+                <span className={`text-sm font-medium ${
+                  zodiacInfo.chineseZodiac.yearStatus === 'Auspicious' 
+                    ? 'text-green-400' 
+                    : zodiacInfo.chineseZodiac.yearStatus === 'Inauspicious'
+                    ? 'text-red-400'
+                    : 'text-halloween-text-primary'
+                }`}>
+                  {zodiacInfo.chineseZodiac.yearStatus}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-halloween-text-secondary">
+              Complete your profile to see your Chinese zodiac details
+            </p>
+          )}
+        </div>
       </div>
     );
   };
@@ -161,7 +254,9 @@ export default function Dashboard() {
         <div className="flex flex-col gap-6 max-w-7xl mx-auto">
           <header className="flex justify-between items-start">
             <div className="space-y-4">
-              <h1 className="text-3xl font-bold text-halloween-text-primary">Personal Fortune</h1>
+              <h1 className="text-3xl font-bold text-halloween-text-primary inline-block px-4 py-2 rounded-lg bg-halloween-secondary/30">
+                Personal Fortune
+              </h1>
               
               {loading ? (
                 <div className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-8 border border-halloween-border">
@@ -205,93 +300,85 @@ export default function Dashboard() {
             
             <div className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-6 w-80 border border-halloween-border">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="font-semibold text-halloween-text-primary text-lg">Mystical Profile</h3>
-                <div className="flex gap-2">
-                  <Link
-                    to="/profile"
-                    className="p-2 text-halloween-accent hover:bg-halloween-background rounded-lg transition-colors"
-                    title="Edit Profile"
-                  >
-                    <User className="h-5 w-5" />
-                  </Link>
-                  <button
-                    onClick={handleSignOut}
-                    className="p-2 text-halloween-accent hover:bg-halloween-background rounded-lg transition-colors"
-                    title="Sign Out"
-                  >
-                    <LogOut className="h-5 w-5" />
-                  </button>
+                <div>
+                  <h3 className="font-semibold text-halloween-text-primary text-lg">User Profile</h3>
+                  <p className="text-sm text-halloween-text-secondary mt-1">Your mystical identity</p>
                 </div>
+                <Link
+                  to="/profile"
+                  className="text-halloween-accent hover:text-halloween-accent/80 flex items-center gap-2 text-sm bg-halloween-accent/10 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <User className="h-4 w-4" />
+                  Edit Profile
+                </Link>
               </div>
-
+              
               <div className="space-y-4">
-                <div className="flex items-center gap-3 text-sm">
-                  <User className="h-4 w-4 text-halloween-accent" />
-                  <span className="text-halloween-text-secondary">{email}</span>
-                </div>
-
-                <div className="flex items-center gap-3 text-sm">
-                  <Calendar className="h-4 w-4 text-halloween-accent" />
-                  <span className="text-halloween-text-secondary">
-                    {formatDate(profile?.birth_date)}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3 text-sm">
-                  <Clock className="h-4 w-4 text-halloween-accent" />
-                  <span className="text-halloween-text-secondary">
-                    {formatTime(profile?.birth_time)}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3 text-sm">
-                  <MapPin className="h-4 w-4 text-halloween-accent" />
-                  <span className="text-halloween-text-secondary">
-                    {profile?.birth_place || 'Not set'}
-                  </span>
-                </div>
-
-                {(sunSign || zodiacInfo) && (
-                  <div className="border-t border-halloween-border pt-4 mt-4">
-                    <h4 className="text-sm font-medium text-halloween-text-primary mb-3">
-                      Astrological Profile
-                    </h4>
-                    {sunSign && (
-                      <div className="flex items-center gap-3 text-sm mb-2">
-                        <Sun className="h-4 w-4 text-halloween-accent" />
-                        <span className="text-halloween-text-secondary">
-                          {sunSign} Sun Sign
-                        </span>
-                      </div>
-                    )}
-                    {zodiacInfo && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3 text-sm">
-                          <Moon className="h-4 w-4 text-halloween-accent" />
-                          <span className="text-halloween-text-secondary">
-                            {zodiacInfo.element} {zodiacInfo.animal}
-                          </span>
-                        </div>
-                        <div className="text-xs text-halloween-text-secondary pl-7">
-                          Year Status: <span className={`font-medium ${
-                            zodiacInfo.yearStatus === 'Auspicious' ? 'text-green-400' :
-                            zodiacInfo.yearStatus === 'Inauspicious' ? 'text-red-400' :
-                            'text-yellow-400'
-                          }`}>{zodiacInfo.yearStatus}</span>
-                        </div>
-                      </div>
-                    )}
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    <User className="h-5 w-5 text-halloween-accent" />
                   </div>
-                )}
+                  <div>
+                    <p className="text-sm font-medium text-halloween-text-primary">Email</p>
+                    <p className="text-sm text-halloween-text-secondary break-all">
+                      {email || 'Not set'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    <Calendar className="h-5 w-5 text-halloween-accent" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-halloween-text-primary">Birth Date</p>
+                    <p className="text-sm text-halloween-text-secondary">
+                      {profile?.birth_date || 'Not set'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    <Clock className="h-5 w-5 text-halloween-accent" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-halloween-text-primary">Birth Time</p>
+                    <p className="text-sm text-halloween-text-secondary">
+                      {profile?.birth_time || 'Not set'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    <MapPin className="h-5 w-5 text-halloween-accent" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-halloween-text-primary">Birth Place</p>
+                    <p className="text-sm text-halloween-text-secondary">
+                      {profile?.birth_place || 'Not set'}
+                    </p>
+                  </div>
+                </div>
               </div>
+
+              {renderZodiacInfo()}
+
+              {(!profile?.birth_date || !profile?.birth_time || !profile?.birth_place) && (
+                <div className="mt-6 p-3 bg-halloween-background/50 rounded-lg border border-halloween-border">
+                  <p className="text-sm text-halloween-text-secondary">
+                    ✨ Complete your profile to unlock personalized astrological insights and readings.
+                  </p>
+                </div>
+              )}
             </div>
           </header>
 
-          <ResponsiveGridLayout
+          <ReactGridLayout
             className="layout"
-            layouts={{ lg: currentLayout }}
-            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-            cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
+            layout={currentLayout}
+            cols={12}
             rowHeight={100}
             width={1200}
             onLayoutChange={(layout) => setCurrentLayout(layout)}
@@ -380,7 +467,7 @@ export default function Dashboard() {
               </div>
               <TarotWidget />
             </div>
-          </ResponsiveGridLayout>
+          </ReactGridLayout>
         </div>
       </div>
       <OccultNewsFooter />
