@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import ReactGridLayout from 'react-grid-layout';
-import { Moon, Compass, BookOpen, ScrollText, User, Hash, Diamond, Cloud } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Responsive, WidthProvider } from 'react-grid-layout';
+import { Moon, Compass, BookOpen, ScrollText, User, Hash, Diamond, Cloud, Calendar, Clock, MapPin, LogOut, Sun } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getHerbs } from '../services/herbService';
 import { getChineseZodiac } from '../services/chineseZodiacService';
-import { getSunSign, getMoonSign, getAscendant } from '../services/astroService';
+import { getSunSign } from '../services/astroService';
 import MoonPhaseWidget from '../components/MoonPhaseWidget';
 import BiorhythmWidget from '../components/BiorhythmWidget';
 import AstroWidget from '../components/AstroWidget';
@@ -14,8 +14,11 @@ import TarotWidget from '../components/TarotWidget';
 import NumerologyWidget from '../components/NumerologyWidget';
 import CrystalWidget from '../components/CrystalWidget';
 import AstroWeatherWidget from '../components/AstroWeatherWidget';
+import OccultNewsFooter from '../components/OccultNewsFooter';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const defaultLayout = [
   { i: 'astroweather', x: 0, y: 0, w: 6, h: 4.4 },
@@ -29,13 +32,15 @@ const defaultLayout = [
 ];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [currentLayout, setCurrentLayout] = useState(defaultLayout);
   const [profile, setProfile] = useState<any>(null);
   const [email, setEmail] = useState<string>('');
   const [herbs, setHerbs] = useState<any[]>([]);
   const [currentHerbIndex, setCurrentHerbIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [chineseZodiac, setChineseZodiac] = useState<any>(null);
+  const [zodiacInfo, setZodiacInfo] = useState<any>(null);
+  const [sunSign, setSunSign] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -44,20 +49,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (profile?.birth_date) {
-      const birthYear = new Date(profile.birth_date).getFullYear();
-      const zodiacInfo = getChineseZodiac(birthYear);
-      setChineseZodiac(zodiacInfo);
+      const birthDate = new Date(profile.birth_date);
+      const birthYear = birthDate.getFullYear();
+      setZodiacInfo(getChineseZodiac(birthYear));
+      setSunSign(getSunSign(birthDate));
     }
   }, [profile?.birth_date]);
-
-  useEffect(() => {
-    if (herbs.length > 0) {
-      const interval = setInterval(() => {
-        setCurrentHerbIndex((prev) => (prev + 1) % herbs.length);
-      }, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [herbs]);
 
   async function loadProfile() {
     try {
@@ -78,6 +75,8 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -87,10 +86,35 @@ export default function Dashboard() {
       setHerbs(herbsData);
     } catch (error) {
       console.error('Error loading herbs:', error);
-    } finally {
-      setLoading(false);
     }
   }
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Not set';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatTime = (timeString: string) => {
+    if (!timeString) return 'Not set';
+    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true
+    });
+  };
 
   const renderHerbAssociations = (herb: any) => {
     if (!herb?.associations) return null;
@@ -127,229 +151,239 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-        
-        {herb.illustration && (
-          <div className="mt-4">
-            <img
-              src={herb.illustration}
-              alt={`${herb.name} illustration`}
-              className="w-full h-48 object-cover rounded-lg"
-            />
-          </div>
-        )}
-        
-        <div className="mt-4">
-          <p className="text-sm text-halloween-text-secondary italic">
-            {herb.additionalInfo}
-          </p>
-        </div>
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-halloween-background p-6">
-      <div className="flex flex-col gap-6 max-w-7xl mx-auto">
-        <header className="flex justify-between items-start">
-          <div className="space-y-4">
-            <h1 className="text-3xl font-bold text-halloween-text-primary">Personal Fortune</h1>
-            
-            {loading ? (
-              <div className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-8 border border-halloween-border">
-                <div className="animate-pulse flex space-x-4">
-                  <div className="flex-1 space-y-4">
-                    <div className="h-4 bg-halloween-border rounded w-3/4"></div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-halloween-border rounded"></div>
-                      <div className="h-4 bg-halloween-border rounded w-5/6"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : herbs.length > 0 ? (
-              <div className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 overflow-hidden border border-halloween-border">
-                <div className="flex">
-                  <div className="w-1/3">
-                    <img
-                      src={herbs[currentHerbIndex].image}
-                      alt={herbs[currentHerbIndex].name}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="w-2/3 p-6">
-                    <h2 className="text-xl font-semibold mb-2 text-halloween-text-primary">
-                      {herbs[currentHerbIndex].name}
-                    </h2>
-                    <p className="text-halloween-text-secondary leading-relaxed">
-                      {herbs[currentHerbIndex].description}
-                    </p>
-                    {renderHerbAssociations(herbs[currentHerbIndex])}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-8 border border-halloween-border">
-                <p className="text-halloween-text-secondary">Failed to load herbs information.</p>
-              </div>
-            )}
-          </div>
-          
-          <div className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-4 w-64 border border-halloween-border">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-semibold text-halloween-text-primary">User Information</h3>
-              <Link
-                to="/profile"
-                className="text-halloween-accent hover:text-halloween-accent/80 flex items-center gap-1 text-sm"
-              >
-                <User className="h-4 w-4" />
-                Profile
-              </Link>
-            </div>
-            <div className="space-y-2 text-sm">
-              <p className="text-halloween-text-secondary">
-                <span className="font-medium text-halloween-text-primary">Email:</span> {email}
-              </p>
-              <p className="text-halloween-text-secondary">
-                <span className="font-medium text-halloween-text-primary">Birth Date:</span> {profile?.birth_date || 'Not set'}
-              </p>
-              <p className="text-halloween-text-secondary">
-                <span className="font-medium text-halloween-text-primary">Birth Time:</span> {profile?.birth_time || 'Not set'}
-              </p>
-              <p className="text-halloween-text-secondary mb-3">
-                <span className="font-medium text-halloween-text-primary">Birth Place:</span> {profile?.birth_place || 'Not set'}
-              </p>
-              {profile?.birth_date && (
-                <>
-                  <div className="space-y-2 border-t border-halloween-border pt-3">
-                    <p className="text-halloween-text-secondary">
-                      <span className="font-medium text-halloween-text-primary">Sun Sign:</span> {getSunSign(new Date(profile.birth_date))}
-                    </p>
-                    <p className="text-halloween-text-secondary">
-                      <span className="font-medium text-halloween-text-primary">Moon Sign:</span> {getMoonSign(new Date(profile.birth_date))}
-                    </p>
-                    <p className="text-halloween-text-secondary mb-3">
-                      <span className="font-medium text-halloween-text-primary">Ascendant:</span> {getAscendant(profile.birth_time, profile.birth_date)}
-                    </p>
-                  </div>
-                  {chineseZodiac && (
-                    <div className="space-y-2 border-t border-halloween-border pt-3">
-                      <p className="text-halloween-text-secondary">
-                        <span className="font-medium text-halloween-text-primary">Chinese Zodiac:</span> {chineseZodiac.element} {chineseZodiac.animal}
-                      </p>
-                      <div className="space-y-1">
-                        <p className="text-halloween-text-secondary">
-                          <span className="font-medium text-halloween-text-primary">Chinese Year:</span> {new Date().getFullYear()} - Year of the Dragon
-                        </p>
-                        <p className={`text-sm ${
-                          chineseZodiac.yearStatus === 'Auspicious' ? 'text-green-400' :
-                          chineseZodiac.yearStatus === 'Inauspicious' ? 'text-red-400' :
-                          'text-halloween-text-secondary'
-                        }`}>
-                          {chineseZodiac.yearStatus} Year
-                        </p>
+    <div className="min-h-screen bg-halloween-background">
+      <div className="p-6">
+        <div className="flex flex-col gap-6 max-w-7xl mx-auto">
+          <header className="flex justify-between items-start">
+            <div className="space-y-4">
+              <h1 className="text-3xl font-bold text-halloween-text-primary">Personal Fortune</h1>
+              
+              {loading ? (
+                <div className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-8 border border-halloween-border">
+                  <div className="animate-pulse flex space-x-4">
+                    <div className="flex-1 space-y-4">
+                      <div className="h-4 bg-halloween-border rounded w-3/4"></div>
+                      <div className="space-y-2">
+                        <div className="h-4 bg-halloween-border rounded"></div>
+                        <div className="h-4 bg-halloween-border rounded w-5/6"></div>
                       </div>
                     </div>
-                  )}
-                </>
+                  </div>
+                </div>
+              ) : herbs.length > 0 ? (
+                <div className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 overflow-hidden border border-halloween-border">
+                  <div className="flex">
+                    <div className="w-1/3">
+                      <img
+                        src={herbs[currentHerbIndex].image}
+                        alt={herbs[currentHerbIndex].name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="w-2/3 p-6">
+                      <h2 className="text-xl font-semibold mb-2 text-halloween-text-primary">
+                        {herbs[currentHerbIndex].name}
+                      </h2>
+                      <p className="text-halloween-text-secondary leading-relaxed">
+                        {herbs[currentHerbIndex].description}
+                      </p>
+                      {renderHerbAssociations(herbs[currentHerbIndex])}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-8 border border-halloween-border">
+                  <p className="text-halloween-text-secondary">Failed to load herbs information.</p>
+                </div>
               )}
             </div>
-          </div>
-        </header>
+            
+            <div className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-6 w-80 border border-halloween-border">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-semibold text-halloween-text-primary text-lg">Mystical Profile</h3>
+                <div className="flex gap-2">
+                  <Link
+                    to="/profile"
+                    className="p-2 text-halloween-accent hover:bg-halloween-background rounded-lg transition-colors"
+                    title="Edit Profile"
+                  >
+                    <User className="h-5 w-5" />
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="p-2 text-halloween-accent hover:bg-halloween-background rounded-lg transition-colors"
+                    title="Sign Out"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
 
-        <ReactGridLayout
-          className="layout"
-          layout={currentLayout}
-          cols={12}
-          rowHeight={100}
-          width={1200}
-          onLayoutChange={(layout) => setCurrentLayout(layout)}
-          draggableHandle=".widget-handle"
-        >
-          <div key="astroweather" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 overflow-hidden border border-halloween-border">
-            <div className="widget-handle flex items-center justify-between p-4 cursor-move border-b border-halloween-border">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
-                <Cloud className="h-5 w-5 text-halloween-accent" />
-                Astrological Weather
-              </h2>
-            </div>
-            <AstroWeatherWidget />
-          </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 text-sm">
+                  <User className="h-4 w-4 text-halloween-accent" />
+                  <span className="text-halloween-text-secondary">{email}</span>
+                </div>
 
-          <div key="moon" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 overflow-hidden border border-halloween-border">
-            <div className="widget-handle flex items-center justify-between p-4 cursor-move border-b border-halloween-border">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
-                <Moon className="h-5 w-5 text-halloween-accent" />
-                Moon Phase
-              </h2>
-            </div>
-            <MoonPhaseWidget />
-          </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Calendar className="h-4 w-4 text-halloween-accent" />
+                  <span className="text-halloween-text-secondary">
+                    {formatDate(profile?.birth_date)}
+                  </span>
+                </div>
 
-          <div key="biorhythm" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 overflow-hidden border border-halloween-border">
-            <div className="widget-handle flex items-center justify-between p-4 cursor-move border-b border-halloween-border">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
-                <Compass className="h-5 w-5 text-halloween-accent" />
-                Biorhythm
-              </h2>
-            </div>
-            <BiorhythmWidget birthDate={profile?.birth_date || ''} />
-          </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <Clock className="h-4 w-4 text-halloween-accent" />
+                  <span className="text-halloween-text-secondary">
+                    {formatTime(profile?.birth_time)}
+                  </span>
+                </div>
 
-          <div key="crystal" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 overflow-hidden border border-halloween-border">
-            <div className="widget-handle flex items-center justify-between p-4 cursor-move border-b border-halloween-border">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
-                <Diamond className="h-5 w-5 text-halloween-accent" />
-                Crystal of the Day
-              </h2>
-            </div>
-            <CrystalWidget />
-          </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <MapPin className="h-4 w-4 text-halloween-accent" />
+                  <span className="text-halloween-text-secondary">
+                    {profile?.birth_place || 'Not set'}
+                  </span>
+                </div>
 
-          <div key="astro" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 overflow-hidden border border-halloween-border">
-            <div className="widget-handle flex items-center justify-between p-4 cursor-move border-b border-halloween-border">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
-                <BookOpen className="h-5 w-5 text-halloween-accent" />
-                Astrological Chart
-              </h2>
+                {(sunSign || zodiacInfo) && (
+                  <div className="border-t border-halloween-border pt-4 mt-4">
+                    <h4 className="text-sm font-medium text-halloween-text-primary mb-3">
+                      Astrological Profile
+                    </h4>
+                    {sunSign && (
+                      <div className="flex items-center gap-3 text-sm mb-2">
+                        <Sun className="h-4 w-4 text-halloween-accent" />
+                        <span className="text-halloween-text-secondary">
+                          {sunSign} Sun Sign
+                        </span>
+                      </div>
+                    )}
+                    {zodiacInfo && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3 text-sm">
+                          <Moon className="h-4 w-4 text-halloween-accent" />
+                          <span className="text-halloween-text-secondary">
+                            {zodiacInfo.element} {zodiacInfo.animal}
+                          </span>
+                        </div>
+                        <div className="text-xs text-halloween-text-secondary pl-7">
+                          Year Status: <span className={`font-medium ${
+                            zodiacInfo.yearStatus === 'Auspicious' ? 'text-green-400' :
+                            zodiacInfo.yearStatus === 'Inauspicious' ? 'text-red-400' :
+                            'text-yellow-400'
+                          }`}>{zodiacInfo.yearStatus}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-            <AstroWidget 
-              birthDate={profile?.birth_date || ''} 
-              birthTime={profile?.birth_time || ''} 
-              birthPlace={profile?.birth_place || ''} 
-            />
-          </div>
+          </header>
 
-          <div key="numerology" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 overflow-hidden border border-halloween-border">
-            <div className="widget-handle flex items-center justify-between p-4 cursor-move border-b border-halloween-border">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
-                <Hash className="h-5 w-5 text-halloween-accent" />
-                Numerology
-              </h2>
+          <ResponsiveGridLayout
+            className="layout"
+            layouts={{ lg: currentLayout }}
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            cols={{ lg: 12, md: 12, sm: 12, xs: 12, xxs: 12 }}
+            rowHeight={100}
+            width={1200}
+            onLayoutChange={(layout) => setCurrentLayout(layout)}
+            draggableHandle=".widget-handle"
+          >
+            <div key="astroweather" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-4 border border-halloween-border">
+              <div className="widget-handle flex items-center justify-between mb-4 cursor-move">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
+                  <Cloud className="h-5 w-5 text-halloween-accent" />
+                  Astrological Weather
+                </h2>
+              </div>
+              <AstroWeatherWidget />
             </div>
-            <NumerologyWidget birthDate={profile?.birth_date || ''} />
-          </div>
 
-          <div key="iching" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 overflow-hidden border border-halloween-border">
-            <div className="widget-handle flex items-center justify-between p-4 cursor-move border-b border-halloween-border">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
-                <ScrollText className="h-5 w-5 text-halloween-accent" />
-                I-Ching
-              </h2>
+            <div key="moon" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-4 border border-halloween-border">
+              <div className="widget-handle flex items-center justify-between mb-4 cursor-move">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
+                  <Moon className="h-5 w-5 text-halloween-accent" />
+                  Moon Phase
+                </h2>
+              </div>
+              <MoonPhaseWidget />
             </div>
-            <IChingWidget />
-          </div>
 
-          <div key="tarot" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 overflow-hidden border border-halloween-border">
-            <div className="widget-handle flex items-center justify-between p-4 cursor-move border-b border-halloween-border">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
-                <ScrollText className="h-5 w-5 text-halloween-accent" />
-                Tarot Reading
-              </h2>
+            <div key="biorhythm" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-4 border border-halloween-border">
+              <div className="widget-handle flex items-center justify-between mb-4 cursor-move">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
+                  <Compass className="h-5 w-5 text-halloween-accent" />
+                  Biorhythm
+                </h2>
+              </div>
+              <BiorhythmWidget birthDate={profile?.birth_date || ''} />
             </div>
-            <TarotWidget />
-          </div>
-        </ReactGridLayout>
+
+            <div key="crystal" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-4 border border-halloween-border">
+              <div className="widget-handle flex items-center justify-between mb-4 cursor-move">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
+                  <Diamond className="h-5 w-5 text-halloween-accent" />
+                  Crystal of the Day
+                </h2>
+              </div>
+              <CrystalWidget />
+            </div>
+
+            <div key="astro" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-4 border border-halloween-border">
+              <div className="widget-handle flex items-center justify-between mb-4 cursor-move">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
+                  <BookOpen className="h-5 w-5 text-halloween-accent" />
+                  Astrological Chart
+                </h2>
+              </div>
+              <AstroWidget 
+                birthDate={profile?.birth_date || ''} 
+                birthTime={profile?.birth_time || ''} 
+                birthPlace={profile?.birth_place || ''} 
+              />
+            </div>
+
+            <div key="numerology" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-4 border border-halloween-border">
+              <div className="widget-handle flex items-center justify-between mb-4 cursor-move">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
+                  <Hash className="h-5 w-5 text-halloween-accent" />
+                  Numerology
+                </h2>
+              </div>
+              <NumerologyWidget birthDate={profile?.birth_date || ''} />
+            </div>
+
+            <div key="iching" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-4 border border-halloween-border">
+              <div className="widget-handle flex items-center justify-between mb-4 cursor-move">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
+                  <ScrollText className="h-5 w-5 text-halloween-accent" />
+                  I-Ching
+                </h2>
+              </div>
+              <IChingWidget />
+            </div>
+
+            <div key="tarot" className="bg-halloween-card rounded-lg shadow-lg shadow-halloween-secondary/20 p-4 border border-halloween-border">
+              <div className="widget-handle flex items-center justify-between mb-4 cursor-move">
+                <h2 className="text-lg font-semibold flex items-center gap-2 text-halloween-text-primary">
+                  <ScrollText className="h-5 w-5 text-halloween-accent" />
+                  Tarot Reading
+                </h2>
+              </div>
+              <TarotWidget />
+            </div>
+          </ResponsiveGridLayout>
+        </div>
       </div>
+      <OccultNewsFooter />
     </div>
   );
 }
